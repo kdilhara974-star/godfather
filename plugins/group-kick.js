@@ -1,59 +1,36 @@
-const { cmd } = require('../command');
+const { cmd } = require('../command'); // oya command system eka reference karanna
+const { getGroupAdmins } = require('../lib/functions'); // admin check karanna
 
 cmd({
-    pattern: "kick",
-    alias: ["remove", "k"],
-    desc: "Removes a user from the group by reply or mention",
-    category: "admin",
-    react: "❌",
-    filename: __filename
-},
-async (conn, mek, m, { from, reply }) => {
+    pattern: 'kick',
+    desc: 'Removes a user by replying to their message',
+    fromMe: false, // true karoth me command eka oyage message walata mathu wenawa
+    type: 'group'
+}, async (message, match) => {
     try {
-        if (!from.endsWith("@g.us")) return reply("📛 *Group only command!*");
+        if (!message.isGroup) return await message.send('⚠️ This command can only be used in groups.');
 
-        // Fetch group metadata
-        const metadata = await conn.groupMetadata(from);
-        const participants = metadata.participants || [];
+        const botNumber = message.conn.user.jid.split(':')[0] + '@s.whatsapp.net';
+        const groupAdmins = await getGroupAdmins(message.chat);
 
-        // Correct sender detection
-        const senderJid = mek.key?.fromMe ? conn.user.id.split(":")[0]+"@s.whatsapp.net" : mek.key?.participant;
-        const botJid = conn.user.id.split(":")[0]+"@s.whatsapp.net";
-
-        const sender = participants.find(p => p.id === senderJid);
-        const bot = participants.find(p => p.id === botJid);
-
-        // Admin checks (handle null)
-        const isSenderAdmin = sender?.admin === "admin" || sender?.admin === "superadmin";
-        const isBotAdmin = bot?.admin === "admin" || bot?.admin === "superadmin";
-
-        if (!isSenderAdmin) return reply("📛 *You must be a group admin!*");
-        if (!isBotAdmin) return reply("📛 *Bot must be admin to remove users!*");
-
-        // Determine target
-        let targetJid;
-        const mentioned = mek.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-        if (mentioned?.length) {
-            targetJid = mentioned[0];
-        } else if (mek.message?.extendedTextMessage?.contextInfo?.participant) {
-            targetJid = mek.message.extendedTextMessage.contextInfo.participant;
-        } else {
-            return reply("⚠️ *Reply to a user or @mention them to kick!*");
+        if (!groupAdmins.includes(botNumber)) {
+            return await message.send('⚠️ I need to be an admin to kick users.');
         }
 
-        // Prevent bot self-kick
-        if (targetJid === botJid) return reply("😅 *I can't remove myself!*");
+        if (!message.quoted) {
+            return await message.send('⚠️ Please reply to the user\'s message you want to kick.');
+        }
 
-        // Remove participant
-        await conn.groupParticipantsUpdate(from, [targetJid], "remove");
+        const userToKick = message.quoted.sender;
 
-        await conn.sendMessage(from, {
-            text: `✅ *Removed:* @${targetJid.split("@")[0]}`,
-            mentions: [targetJid]
-        });
+        if (groupAdmins.includes(userToKick)) {
+            return await message.send('⚠️ Cannot kick an admin!');
+        }
 
-    } catch (err) {
-        console.error("Kick Error:", err);
-        reply("❌ *Failed to remove user!*");
+        await message.groupRemove([userToKick]);
+        await message.send('✅ User has been removed from the group.');
+    } catch (error) {
+        console.log(error);
+        await message.send('❌ Failed to kick the user.');
     }
 });
