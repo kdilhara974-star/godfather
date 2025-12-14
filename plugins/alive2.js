@@ -3,32 +3,14 @@ const config = require('../config');
 const os = require("os");
 const { runtime } = require('../lib/functions');
 
-// Fake ChatGPT vCard
-const fakevCard = {
-    key: {
-        fromMe: false,
-        participant: "0@s.whatsapp.net",
-        remoteJid: "status@broadcast"
-    },
-    message: {
-        contactMessage: {
-            displayName: "© Mr Hiruka",
-            vcard: `BEGIN:VCARD
-VERSION:3.0
-FN:Meta
-ORG:META AI;
-TEL;type=CELL;type=VOICE;waid=94762095304:+94762095304
-END:VCARD`
-        }
-    }
-};
+if (!global.aliveMessages) global.aliveMessages = [];
 
 // ALIVE COMMAND
 cmd({
     pattern: "alive2",
     alias: ["hyranu2", "ranu2", "status2", "a2"],
     react: "🌝",
-    desc: "Check bot online or no. Reply 1 to alive message to get ping.",
+    desc: "Send alive message with ping. Reply 2 to alive to get ping again.",
     category: "main",
     filename: __filename
 },
@@ -36,16 +18,13 @@ async (robin, mek, m, { from, sender, reply }) => {
     try {
         await robin.sendPresenceUpdate('recording', from);
 
-        // Voice Note
-        await robin.sendMessage(from, {
-            audio: {
-                url: "https://github.com/Ranumithaofc/RANU-FILE-S-/raw/refs/heads/main/Audio/Ranumitha-x-md-Alive-org.opus"
-            },
-            mimetype: 'audio/mp4',
-            ptt: true
-        }, { quoted: fakevCard });
+        // Calculate initial ping
+        const startTime = Date.now();
+        const emojis = ['⚡', '💀'];
+        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+        const ping = Date.now() - startTime;
 
-        // Stylish Alive Caption with numbered menu
+        // Alive message caption
         const status = `
 ╭─〔 💠 ALIVE STATUS 💠 〕─◉
 │
@@ -57,32 +36,20 @@ async (robin, mek, m, { from, sender, reply }) => {
 │🛠 *Mode*: [ ${config.MODE} ]
 │🖥 *Host*: ${os.hostname()}
 │🌀 *Version*: ${config.BOT_VERSION}
+│⚡ *Ping*: _${ping}ms_ ${randomEmoji}
 ╰─────────────────────────────⊷
      
-      1. ʙᴏᴛ ᴍᴇɴᴜ  
-      2. ʙᴏᴛ ꜱᴘᴇᴇᴅ 
+      1. ʙᴏᴛ ꜱᴘᴇᴇᴅ  
+      2. ʙᴏᴛ ᴍᴇɴᴜ 
 > 𝐌𝐚𝐝𝐞 𝐛𝐲 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝐀 🥶`;
 
-        // Send Image + Caption and store message ID
+        // Send image + alive caption
         let aliveMsg = await robin.sendMessage(from, {
-            image: {
-                url: "https://raw.githubusercontent.com/Ranumithaofc/RANU-FILE-S-/refs/heads/main/images/GridArt_20250726_193256660.jpg"
-            },
-            caption: status,
-            contextInfo: {
-                mentionedJid: [sender],
-                forwardingScore: 999,
-                isForwarded: false,
-                forwardedNewsletterMessageInfo: {
-                    newsletterJid: '',
-                    newsletterName: '',
-                    serverMessageId: 143
-                }
-            }
+            image: { url: "https://raw.githubusercontent.com/Ranumithaofc/RANU-FILE-S-/refs/heads/main/images/GridArt_20250726_193256660.jpg" },
+            caption: status
         }, { quoted: mek });
 
-        // Store alive message ID in memory
-        if (!global.aliveMessages) global.aliveMessages = [];
+        // Store alive message ID for reply detection
         global.aliveMessages.push(aliveMsg.key.id);
 
     } catch (e) {
@@ -91,57 +58,56 @@ async (robin, mek, m, { from, sender, reply }) => {
     }
 });
 
-// LISTENER FOR REPLY WITH NUMBER 1
+// REPLY HANDLER: Check reply to alive message
 cmd({
-    pattern: ".*",
+    pattern: "",
     fromMe: false,
-    desc: "Reply with 1 to alive message to check ping",
+    desc: "Detect reply to alive message and respond",
     category: "main",
     filename: __filename
 },
 async (robin, mek, m, { from, sender, quoted, reply }) => {
     try {
-        // Only proceed if message is a reply
         if (!quoted || !quoted.key) return;
 
-        // Check if replied message is an alive message
-        if (global.aliveMessages && global.aliveMessages.includes(quoted.key.id)) {
-            // Only trigger if user replied with "1"
-            if (m.text && m.text.trim() === "1") {
-                const startTime = Date.now();
-                const emojis = ['💀', '⚡'];
-                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+        // Only trigger if reply is to an alive message
+        if (!global.aliveMessages.includes(quoted.key.id)) return;
 
-                // React
-                await robin.sendMessage(from, {
-                    react: { text: randomEmoji, key: mek.key }
-                });
+        const text = (m.text || "").trim();
 
-                // Send initial ping message
-                let sentMsg = await robin.sendMessage(from, { text: "Pinging..." }, { quoted: mek });
+        // Random emoji for reactions
+        const emojis = ['⚡', '💀'];
+        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-                // Calculate ping
-                const ping = Date.now() - startTime;
+        // React
+        await robin.sendMessage(from, {
+            react: { text: randomEmoji, key: mek.key }
+        });
 
-                // Edit same message with ping result
-                const newText = `*Ping: _${ping}ms_ ${randomEmoji}*`;
-                await robin.sendMessage(from, {
-                    edit: sentMsg.key,
-                    text: newText,
-                    contextInfo: {
-                        mentionedJid: [sender],
-                        forwardingScore: 999,
-                        isForwarded: false,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '',
-                            newsletterName: "",
-                            serverMessageId: 143
-                        }
-                    }
-                });
-            }
+        if (text === "1") {
+            // Reply 1 → Send ping
+            const startTime = Date.now();
+            let sentMsg = await robin.sendMessage(from, { text: "Calculating ping..." }, { quoted: mek });
+            const ping = Date.now() - startTime;
+
+            await robin.sendMessage(from, {
+                edit: sentMsg.key,
+                text: `*Ping: _${ping}ms_ ${randomEmoji}*`
+            });
+
+        } else if (text === "2") {
+            // Reply 2 → Also send ping (or you can send menu here)
+            const startTime = Date.now();
+            let sentMsg = await robin.sendMessage(from, { text: "Calculating ping..." }, { quoted: mek });
+            const ping = Date.now() - startTime;
+
+            await robin.sendMessage(from, {
+                edit: sentMsg.key,
+                text: `*Ping: _${ping}ms_ ${randomEmoji}*`
+            });
         }
+
     } catch (e) {
-        console.error("Ping reply error:", e);
+        console.error("Alive reply error:", e);
     }
 });
