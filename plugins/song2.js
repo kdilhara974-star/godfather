@@ -1,5 +1,6 @@
 const { cmd } = require("../command");
-const fetch = require("node-fetch");
+const yts = require("yt-search");
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
@@ -29,157 +30,170 @@ cmd(
     pattern: "song2",
     alias: ["play2"],
     react: "🎵",
-    desc: "Download YouTube song (Audio)",
+    desc: "Download YouTube Song (Audio)",
     category: "download",
-    use: ".song <song name | yt link>",
+    use: ".song3 <song name>",
     filename: __filename,
   },
 
   async (conn, mek, m, { from, reply, q }) => {
     try {
-      let query = q?.trim();
-
-      // reply කරලා use කරද්දී
-      if (!query && m?.quoted) {
-        query =
-          m.quoted.message?.conversation ||
-          m.quoted.message?.extendedTextMessage?.text ||
-          m.quoted.text;
+      if (!q) {
+        return reply("❓ Song name ekak hari YouTube link ekak hari denna.");
       }
 
-      if (!query) {
-        return reply("⚠️ Song name ekak hari YouTube link ekak hari denna.");
+      // Search YouTube
+      const search = await yts(q);
+      if (!search.videos.length) {
+        return reply("❌ Song ekak hoyaganna bari una.");
       }
 
-      // Shorts → normal YT link
-      if (query.includes("youtube.com/shorts/")) {
-        const id = query.split("/shorts/")[1].split(/[?&]/)[0];
-        query = `https://www.youtube.com/watch?v=${id}`;
+      const video = search.videos[0];
+      const ytUrl = video.url;
+
+      // API
+      const apiUrl = `https://gtech-api-xtp1.onrender.com/api/audio/yt?apikey=APIKEY&url=${encodeURIComponent(
+        ytUrl
+      )}`;
+
+      const { data } = await axios.get(apiUrl);
+
+      if (!data?.status || !data?.result?.media?.audio_url) {
+        return reply("❌ Song download karanna bari una.");
       }
 
-      // ✅ UPDATED API URL (ඔයා ඉල්ලපු එක)
-      const apiUrl = `https://api.nekolabs.my.id/downloader/youtube/play/v1?q=${encodeURIComponent(q)}`;
-      const res = await fetch(apiUrl);
-      const data = await res.json();
+      const audioUrl = data.result.media.audio_url;
+      const thumbnail = data.result.media.thumbnail;
 
-      if (!data?.success || !data?.result?.downloadUrl) {
-        return reply("❌ Song not found / API error.");
-      }
-
-      const meta = data.result.metadata;
-      const dlUrl = data.result.downloadUrl;
-
-      // thumbnail
-      let thumb;
-      try {
-        const t = await fetch(meta.cover);
-        thumb = Buffer.from(await t.arrayBuffer());
-      } catch {
-        thumb = null;
-      }
-
+      // Caption
       const caption = `
 🎶 *RANUMITHA-X-MD SONG DOWNLOADER* 🎶
 
-📑 *Title:* ${meta.title}
-📡 *Channel:* ${meta.channel}
-⏱ *Duration:* ${meta.duration}
-🌐 *Url:* ${meta.url}
+📑 *Title:* ${video.title}
+⏱ *Duration:* ${video.timestamp}
+📆 *Uploaded:* ${video.ago}
+👁 *Views:* ${video.views}
+🔗 *Url:* ${video.url}
 
-🔽 *Reply with number:*
+🔽 *Reply with your choice:*
 
-1️⃣ Audio 🎵  
-2️⃣ Document 📁  
-3️⃣ Voice Note 🎤  
+1️⃣ *Audio Type* 🎵  
+2️⃣ *Document Type* 📁  
+3️⃣ *Voice Note Type* 🎤  
 
-> © Powered by RANUMITHA-X-MD 🌛`;
+> © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
 
-      const sent = await conn.sendMessage(
+      const sentMsg = await conn.sendMessage(
         from,
-        { image: thumb, caption },
+        {
+          image: { url: thumbnail },
+          caption,
+        },
         { quoted: fakevCard }
       );
 
-      const msgId = sent.key.id;
+      const messageID = sentMsg.key.id;
 
-      // reply listener
-      conn.ev.on("messages.upsert", async (u) => {
+      // Reply Listener
+      conn.ev.on("messages.upsert", async (msgUpdate) => {
         try {
-          const msg = u.messages[0];
-          if (!msg?.message) return;
+          const mekInfo = msgUpdate.messages[0];
+          if (!mekInfo?.message) return;
 
-          const text =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text;
+          const userText =
+            mekInfo.message.conversation ||
+            mekInfo.message.extendedTextMessage?.text;
 
           const isReply =
-            msg.message?.extendedTextMessage?.contextInfo?.stanzaId === msgId;
+            mekInfo?.message?.extendedTextMessage?.contextInfo?.stanzaId ===
+            messageID;
 
           if (!isReply) return;
 
-          const choice = text.trim();
+          const choice = userText.trim();
 
-          const safeTitle = meta.title
+          await conn.sendMessage(from, {
+            react: { text: "⬇️", key: mekInfo.key },
+          });
+
+          const safeTitle = video.title
             .replace(/[\\/:*?"<>|]/g, "")
             .slice(0, 80);
 
           const tempMp3 = path.join(__dirname, `../temp/${Date.now()}.mp3`);
           const tempOpus = path.join(__dirname, `../temp/${Date.now()}.opus`);
 
-          let sendData;
-
-          // 1️⃣ Audio
+          // Option 1 - Audio
           if (choice === "1") {
-            sendData = {
-              audio: { url: dlUrl },
-              mimetype: "audio/mpeg",
-              fileName: `${safeTitle}.mp3`,
-            };
+            await conn.sendMessage(
+              from,
+              {
+                audio: { url: audioUrl },
+                mimetype: "audio/mpeg",
+                fileName: `${safeTitle}.mp3`,
+              },
+              { quoted: mek }
+            );
 
-          // 2️⃣ Document
+          // Option 2 - Document
           } else if (choice === "2") {
-            sendData = {
-              document: { url: dlUrl },
-              mimetype: "audio/mpeg",
-              fileName: `${safeTitle}.mp3`,
-              caption: meta.title,
-            };
+            await conn.sendMessage(
+              from,
+              {
+                document: { url: audioUrl },
+                mimetype: "audio/mpeg",
+                fileName: `${safeTitle}.mp3`,
+              },
+              { quoted: mek }
+            );
 
-          // 3️⃣ Voice Note
+          // Option 3 - Voice Note
           } else if (choice === "3") {
-            const r = await fetch(dlUrl);
-            fs.writeFileSync(tempMp3, Buffer.from(await r.arrayBuffer()));
+            const audioRes = await axios.get(audioUrl, {
+              responseType: "arraybuffer",
+            });
 
-            await new Promise((res, rej) => {
+            fs.writeFileSync(tempMp3, audioRes.data);
+
+            await new Promise((resolve, reject) => {
               ffmpeg(tempMp3)
                 .audioCodec("libopus")
                 .format("opus")
                 .audioBitrate("64k")
                 .save(tempOpus)
-                .on("end", res)
-                .on("error", rej);
+                .on("end", resolve)
+                .on("error", reject);
             });
 
-            sendData = {
-              audio: fs.readFileSync(tempOpus),
-              mimetype: "audio/ogg; codecs=opus",
-              ptt: true,
-            };
+            const voiceBuffer = fs.readFileSync(tempOpus);
+
+            await conn.sendMessage(
+              from,
+              {
+                audio: voiceBuffer,
+                mimetype: "audio/ogg; codecs=opus",
+                ptt: true,
+              },
+              { quoted: mek }
+            );
 
             fs.unlinkSync(tempMp3);
             fs.unlinkSync(tempOpus);
+
           } else {
-            return reply("❌ Invalid choice!");
+            return reply("❌ *Invalid choice!* 1, 2, or 3 kiyala reply karanna.");
           }
 
-          await conn.sendMessage(from, sendData, { quoted: mek });
-        } catch (e) {
-          console.error("reply error:", e);
+          await conn.sendMessage(from, {
+            react: { text: "✔️", key: mekInfo.key },
+          });
+        } catch (err) {
+          console.error("Reply handler error:", err);
         }
       });
-    } catch (e) {
-      console.error("song cmd error:", e);
-      reply("⚠️ Error occurred!");
+    } catch (err) {
+      console.error("song3 cmd error:", err);
+      reply("⚠️ Song process karaddi error ekak una.");
     }
   }
 );
