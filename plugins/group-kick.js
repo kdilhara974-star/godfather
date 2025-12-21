@@ -8,10 +8,10 @@ cmd({
     react: "❌",
     filename: __filename
 },
-async (conn, mek, m, { from, isGroup, isBotAdmins, isAdmins, reply }) => {
+async (conn, mek, m, { from, isGroup, isBotAdmins, isOwner, reply }) => {
     try {
         if (!isGroup) return reply("📛 *Group command only!*");
-        if (!isAdmins) return reply("📛 *Only admins can use this command!*");
+        if (!isOwner) return reply("📛 *Owner only command!*");
         if (!isBotAdmins) return reply("📛 *Bot must be admin!*");
 
         let mentionedJid;
