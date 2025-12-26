@@ -13,8 +13,8 @@ const styleMap = {
 // Command metadata
 const chrCommand = {
   pattern: "chr",
-  alias: ["creact"],
-  react: "🔤",
+  alias: ["creact","rch","channelreact","channelr"],
+  react: "🎡",
   desc: "React to channel messages with stylized text",
   category: "owner",
   use: ".chr <channel-link> <text>",
@@ -24,7 +24,7 @@ const chrCommand = {
 // Command handler
 cmd(chrCommand, async (client, _, __, { from, body, isCmd, command, args, q, isCreator, reply }) => {
   try {
-    if (!isCreator) return reply("❌ Owner only command");
+    if (!isCreator) return reply("*🚫 Owner only command!*");
 
     if (!q) return reply(`Usage:\n${command} https://whatsapp.com/channel/1234567890 hello`);
 
@@ -47,16 +47,16 @@ cmd(chrCommand, async (client, _, __, { from, body, isCmd, command, args, q, isC
     await client.newsletterReactMessage(metadata.id, messageId, styledText);
 
     reply(
-      `╭━━━〔 *WHITESHADOW-MD* 〕━━━┈⊷\n` +
-      `┃▸ *Success!* Reaction sent\n` +
+      `╭━━━〔 *RANUMITHA-X-MD* 〕━━━┈⊷\n` +
+      `┃▸ *Status:* *Reaction sent ✅*\n` +
       `┃▸ *Channel:* ${metadata.name}\n` +
       `┃▸ *Reaction:* ${styledText}\n` +
       `╰────────────────┈⊷\n` +
-      `> *© Powered by WHITESHADOW*`
+      `> © Powerd by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`
     );
 
   } catch (err) {
     console.error(err);
-    reply("❎ Error: " + (err.message || "Failed to send reaction"));
+    reply("Error: " + (err.message || "Failed to send reaction"));
   }
 });
