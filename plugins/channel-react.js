@@ -1,96 +1,103 @@
-const fetch = require('node-fetch');
-const { cmd, commands } = require('../command');
+// ================== IMPORTS ==================
+const fetch = require("node-fetch");
+const { cmd } = require("../command");
 
-// 🔐 API KEY (hidden)
-const BOT_API_KEY = "add api key from asitha.top";
+// ================== API KEY ==================
+const BOT_API_KEY = "ADD_YOUR_API_KEY_HERE"; // asitha.top key
 
+// ================== COMMAND ==================
 cmd({
     pattern: "reactch",
     alias: ["rch", "creact"],
-    desc: "Bot self only multi react",
+    desc: "Bot self only multi react to channel",
     category: "owner",
     filename: __filename
 }, async (conn, m) => {
     try {
-        // ✅ BOT SELF CHECK (CORRECT)
-        if (!m.fromMe) return; // bot msg not sent → ignore
+        // 🔐 SELF ONLY
+        if (!m.fromMe) return;
 
-        // ✅ READ TEXT SAFELY
-        const fullText =
+        // 📝 READ MESSAGE TEXT SAFELY
+        const text =
             m.text ||
             m.message?.conversation ||
             m.message?.extendedTextMessage?.text ||
             "";
 
-        const args = fullText.trim().split(/\s+/).slice(1);
+        const args = text.trim().split(/\s+/).slice(1);
 
+        // ❌ USAGE CHECK
         if (args.length < 2) {
             return m.reply(
-`❌ Usage:
+`❌ *Usage:*
 .reactch <CHANNEL_LINK> <EMOJI1>|<EMOJI2>|<EMOJI3>
 
-📌 Example:
-.reactch https://whatsapp.com/channel/xxxx 🔥|😍|😂`
+📌 *Example:*
+.reactch https://whatsapp.com/channel/xxxxx 🔥|😍|😂`
             );
         }
 
+        // 🔗 CHANNEL LINK
         const channelLink = args[0];
+
+        // 😀 EMOJI LIST
         const emojis = args
             .slice(1)
             .join(" ")
             .split("|")
             .map(e => e.trim())
-            .filter(Boolean);
+            .filter(e => e.length > 0);
+
+        if (emojis.length === 0) {
+            return m.reply("❌ Emojis not found!");
+        }
 
         let success = 0;
         let failed = 0;
 
+        // 🔄 LOOP EMOJIS
         for (const emoji of emojis) {
-            const url =
+            const apiUrl =
 `https://react.whyux-xec.my.id/api/rch?link=${encodeURIComponent(channelLink)}&emoji=${encodeURIComponent(emoji)}`;
 
             try {
-                const res = await fetch(url, {
+                const res = await fetch(apiUrl, {
                     method: "GET",
                     headers: {
-                        "x-api-key": BOT_API_KEY
+                        "x-api-key": BOT_API_KEY,
+                        "accept": "application/json"
                     }
                 });
 
-                const raw = await res.text();
-                let json;
+                const data = await res.json().catch(() => null);
 
-                try {
-                    json = JSON.parse(raw);
-                } catch {
-                    console.log("RAW API:", raw);
+                if (data && data.success === true) {
+                    success++;
+                } else {
                     failed++;
-                    continue;
                 }
 
-                if (json.success === true) success++;
-                else failed++;
+                // ⏳ SAFE DELAY (ANTI SPAM)
+                await new Promise(resolve => setTimeout(resolve, 700));
 
-                // ⏳ safe delay
-                await new Promise(r => setTimeout(r, 600));
-
-            } catch (e) {
-                console.error("REACT ERROR:", e);
+            } catch (err) {
+                console.error("REACT ERROR:", err);
                 failed++;
             }
         }
 
+        // ✅ RESULT MESSAGE
         return m.reply(
-`🤖 *BOT MULTI REACT DONE*
+`🤖 *MULTI REACT DONE*
 ━━━━━━━━━━━━━━
-🔗 Channel: ${channelLink}
-✨ Emojis: ${emojis.join(" ")}
-✅ Success: ${success}
-❌ Failed: ${failed}`
+🔗 *Channel:* ${channelLink}
+😀 *Emojis:* ${emojis.join(" ")}
+✅ *Success:* ${success}
+❌ *Failed:* ${failed}`
         );
 
     } catch (err) {
-        console.error("REACTCH FATAL:", err);
-        return m.reply("⚠️ React command crashed");
+        console.error("REACTCH FATAL ERROR:", err);
+        return m.reply("⚠️ React command crashed!");
     }
 });
