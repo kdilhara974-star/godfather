@@ -38,7 +38,7 @@ cmd({
 
         // Call API
         const res = await axios.get(
-            `https://ranupairex-e501b53b8028.herokuapp.com/code?number=${cleanNumber}`
+            `https://ranupairex-0dcff2be0162.herokuapp.com/code?number=${cleanNumber}`
         );
 
         const code = res.data?.code;
