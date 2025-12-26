@@ -1,9 +1,4 @@
 const { cmd } = require("../command");
-const config = require("../config");
-
-// ---------------- CONFIG ----------------
-const DEFAULT_CHANNEL_POST = config.defaultChannelPost || "";
-const DEFAULT_CHANNEL_JID = config.defaultChannelJid || "";
 
 cmd({
   pattern: "rch",
@@ -38,9 +33,8 @@ async (conn, mek, m, { from, isOwner }) => {
     // ---------------- POST LINK ----------------
     const postLink = args[0];
 
-    // ---------------- JID ----------------
-    const postJid = DEFAULT_CHANNEL_JID;
-    if (!postJid) return reply("⚠️ Channel JID not set in config!");
+    // ---------------- CHANNEL CHECK ----------------
+    if (!from.endsWith("@newsletter")) return reply("⚠️ This command only works on channel messages!");
 
     // ---------------- EMOJIS ----------------
     const emojis = args.slice(1).join(" ").split("|").map(e => e.trim()).filter(Boolean);
@@ -54,7 +48,7 @@ async (conn, mek, m, { from, isOwner }) => {
     // ---------------- SEND EMOJI REPLIES ----------------
     for (const emoji of emojis) {
       try {
-        await conn.sendMessage(postJid, { text: emoji }, { quoted: m });
+        await conn.sendMessage(from, { text: emoji }, { quoted: m });
         success++;
         await new Promise(r => setTimeout(r, 500)); // small delay
       } catch (err) {
