@@ -22,8 +22,8 @@ END:VCARD`
 
 
 cmd({
-  pattern: "cid",
-  alias: ["newsletter", "cjid"],
+  pattern: "cinfo",
+  alias: ["newsletter", "cid", "cjid"],
   react: "📡",
   desc: "Get WhatsApp Channel info from link",
   category: "whatsapp",
