@@ -7,73 +7,56 @@ const ffmpeg = require("fluent-ffmpeg");
 cmd({
   pattern: "getvnote",
   alias: ["gvn"],
-  desc: "Convert replied video or URL to WhatsApp Video Note",
+  desc: "Convert video to WhatsApp Video Note",
   category: "owner",
   react: "🎥",
-  use: ".gvn <reply video | video url>",
   filename: __filename,
 }, async (conn, mek, m, { from, reply, q }) => {
   try {
-    let mediaBuffer;
+    let buffer;
 
-    // -------- REPLIED VIDEO ----------
-    if (m.quoted) {
-      if (m.quoted.mtype !== "videoMessage") {
-        return reply("⚠️ *Video ekakata reply karanna!*");
-      }
-      mediaBuffer = await m.quoted.download();
-    }
-
-    // -------- VIDEO URL ----------
-    else if (q) {
+    if (m.quoted && m.quoted.mtype === "videoMessage") {
+      buffer = await m.quoted.download();
+    } else if (q) {
       const res = await fetch(q);
-      if (!res.ok) throw new Error("Invalid video URL");
-      mediaBuffer = Buffer.from(await res.arrayBuffer());
-    } 
-    else {
-      return reply("⚠️ *Video ekakata reply karanna naththang URL ekak denna!*");
+      buffer = Buffer.from(await res.arrayBuffer());
+    } else {
+      return reply("⚠️ Video ekakata reply karanna naththang URL ekak denna");
     }
 
-    await conn.sendMessage(from, { react: { text: "⬇️", key: mek.key } });
+    const inPath = path.join(__dirname, `../temp/in_${Date.now()}.mp4`);
+    const outPath = path.join(__dirname, `../temp/out_${Date.now()}.mp4`);
+    fs.writeFileSync(inPath, buffer);
 
-    const inputPath = path.join(__dirname, `../temp/${Date.now()}.mp4`);
-    const outputPath = path.join(__dirname, `../temp/${Date.now()}_ptv.mp4`);
-
-    fs.writeFileSync(inputPath, mediaBuffer);
-
-    await conn.sendMessage(from, { react: { text: "⚙️", key: mek.key } });
-
-    // -------- CONVERT TO VIDEO NOTE FORMAT --------
     await new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
+      ffmpeg(inPath)
         .outputOptions([
-          "-vf crop='min(iw,ih):min(iw,ih)'", // square
+          "-vf scale=512:512:force_original_aspect_ratio=increase,crop=512:512",
           "-c:v libx264",
-          "-preset veryfast",
+          "-profile:v baseline",
+          "-level 3.0",
+          "-pix_fmt yuv420p",
           "-movflags +faststart",
-          "-pix_fmt yuv420p"
+          "-c:a aac",
+          "-b:a 128k",
+          "-shortest"
         ])
         .on("end", resolve)
-        .on("error", reject)
-        .save(outputPath);
+        .on("error", err => reject(err))
+        .save(outPath);
     });
 
-    const videoBuffer = fs.readFileSync(outputPath);
-
-    // -------- SEND VIDEO NOTE --------
     await conn.sendMessage(from, {
-      video: videoBuffer,
+      video: fs.readFileSync(outPath),
       mimetype: "video/mp4",
-      ptv: true, // 👈 Video Note
+      ptv: true,
     }, { quoted: mek });
 
-    await conn.sendMessage(from, { react: { text: "✔️", key: mek.key } });
-
-    fs.unlinkSync(inputPath);
-    fs.unlinkSync(outputPath);
+    fs.unlinkSync(inPath);
+    fs.unlinkSync(outPath);
 
   } catch (e) {
-    console.error(e);
-    reply("*❌ Video Note create karanna bari una!*");
+    console.error("FFMPEG ERROR:", e);
+    reply("❌ Video Note convert fail una. FFmpeg check karanna.");
   }
 });
