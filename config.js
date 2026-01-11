@@ -16,9 +16,9 @@ ALWAYS_ONLINE: process.env.ALWAYS_ONLINE || "true",
 // maks true for always online 
 PREFIX: process.env.PREFIX || ".",
 // add your prifix for bot
-MODE: process.env.MODE || "inbox",
+MODE: process.env.MODE || "public",
 // make bot public-private-inbox-group
-PUBLIC_MODE: process.env.PUBLIC_MODE || "false",
+PUBLIC_MODE: process.env.PUBLIC_MODE || "true",
 // make false if want private mod
 AUTO_VOICE: process.env.AUTO_VOICE || "true",
 // make true for send automatic voices
