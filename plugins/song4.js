@@ -29,7 +29,7 @@ END:VCARD`,
 
 cmd(
   {
-    pattern: "song",
+    pattern: "song4",
     alias: ["play"],
     react: "🎵",
     desc: "Song downloader with thumbnail",
