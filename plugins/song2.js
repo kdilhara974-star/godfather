@@ -25,16 +25,13 @@ END:VCARD`
     }
 };
 
-
 cmd({
   pattern: "song2",
   alias: ["play2"],
-  react: "🎵",
   desc: "YouTube Song Downloader (Multi Reply + Voice Note Fixed)",
   category: "download",
-  use: ".song4 <query>",
   filename: __filename,
-}, async (conn, mek, m, { from, reply, q }) => {
+}, async (conn, m, store, { from, quoted, q, reply }) => {
   try {
     /* ===== QUERY ===== */
     let query = q?.trim();
@@ -57,6 +54,8 @@ cmd({
       query = `https://www.youtube.com/watch?v=${id}`;
     }
 
+    await conn.sendMessage(from, { react: { text: '🎵', key: m.key } });
+
     /* ===== SEARCH ===== */
     const search = await yts(query);
     if (!search.videos.length)
@@ -75,7 +74,7 @@ cmd({
     const songUrl = data.data.url;
 
     /* ===== MENU ===== */
-    const sent = await conn.sendMessage(
+    const sentMsg = await conn.sendMessage(
       from,
       {
         image: { url: video.thumbnail },
@@ -90,112 +89,101 @@ cmd({
 
 🔽 *Reply with your choice:*
 
-1. *Audio Type* 🎵  
-2. *Document Type* 📁  
-3. *Voice Note Type* 🎤  
+1️⃣ Audio Type 🎵  
+2️⃣ Document Type 📁  
+3️⃣ Voice Note Type 🎤  
 
 > © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝐃 🌛`,
       },
       { quoted: fakevCard }
     );
 
-    const menuId = sent.key.id;
+    const messageID = sentMsg.key.id;
 
-    /* ===== REACT HELPER ===== */
-    const react = async (emoji, key) => {
-      await conn.sendMessage(from, {
-        react: { text: emoji, key },
-      });
-    };
+    // 🧠 Reply listener
+    conn.ev.on("messages.upsert", async (msgData) => {
+      const receivedMsg = msgData.messages[0];
+      if (!receivedMsg?.message) return;
 
-    /* ===== MULTI REPLY LISTENER ===== */
-    const handler = async (up) => {
-      const msg = up.messages?.[0];
-      if (!msg?.message) return;
+      const receivedText = receivedMsg.message.conversation || receivedMsg.message.extendedTextMessage?.text;
+      const senderID = receivedMsg.key.remoteJid;
+      const isReplyToBot = receivedMsg.message.extendedTextMessage?.contextInfo?.stanzaId === messageID;
 
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text;
+      if (isReplyToBot) {
+        await conn.sendMessage(senderID, { react: { text: '⬇️', key: receivedMsg.key } });
 
-      const stanzaId =
-        msg.message.extendedTextMessage?.contextInfo?.stanzaId;
+        let mediaMsg;
 
-      // only replies to this menu
-      if (stanzaId !== menuId) return;
+        switch (receivedText.trim()) {
+          case "1":
+            await conn.sendMessage(senderID, { react: { text: '⬆️', key: receivedMsg.key } });
+            mediaMsg = await conn.sendMessage(senderID, {
+              audio: { url: songUrl },
+              mimetype: "audio/mpeg",
+            }, { quoted: receivedMsg });
+            await conn.sendMessage(senderID, { react: { text: '✔️', key: receivedMsg.key } });
+            break;
 
-      if (!["1", "2", "3"].includes(text)) return;
+          case "2":
+            await conn.sendMessage(senderID, { react: { text: '⬆️', key: receivedMsg.key } });
+            
+            const buffer = await axios.get(songUrl, {
+              responseType: "arraybuffer",
+            });
 
-      /* ⬇️ DOWNLOAD START */
-      await react("⬇️", msg.key);
+            mediaMsg = await conn.sendMessage(senderID, {
+              document: buffer.data,
+              mimetype: "audio/mpeg",
+              fileName: `${video.title.replace(/[\\/:*?"<>|]/g, "")}.mp3`,
+            }, { quoted: receivedMsg });
+            
+            await conn.sendMessage(senderID, { react: { text: '✔️', key: receivedMsg.key } });
+            break;
 
-      /* ===== OPTION 1 : AUDIO ===== */
-      if (text === "1") {
-        await react("⬆️", msg.key);
+          case "3":
+            await conn.sendMessage(senderID, { react: { text: '⬆️', key: receivedMsg.key } });
+            
+            const mp3Path = path.join(__dirname, `${Date.now()}.mp3`);
+            const opusPath = path.join(__dirname, `${Date.now()}.opus`);
 
-        await conn.sendMessage(from, {
-          audio: { url: songUrl },
-          mimetype: "audio/mpeg",
-        }, { quoted: msg });
+            // Download mp3
+            const stream = await axios.get(songUrl, { responseType: "stream" });
+            const writer = fs.createWriteStream(mp3Path);
+            stream.data.pipe(writer);
+            await new Promise(r => writer.on("finish", r));
 
-        return react("✔️", msg.key);
+            // Convert to opus
+            await new Promise((resolve, reject) => {
+              ffmpeg(mp3Path)
+                .audioCodec("libopus")
+                .format("opus")
+                .save(opusPath)
+                .on("end", resolve)
+                .on("error", reject);
+            });
+
+            mediaMsg = await conn.sendMessage(senderID, {
+              audio: fs.readFileSync(opusPath),
+              mimetype: "audio/ogg; codecs=opus",
+              ptt: true,
+            }, { quoted: receivedMsg });
+
+            // Cleanup temp files
+            fs.unlinkSync(mp3Path);
+            fs.unlinkSync(opusPath);
+            
+            await conn.sendMessage(senderID, { react: { text: '✔️', key: receivedMsg.key } });
+            break;
+
+          default:
+            await conn.sendMessage(senderID, { react: { text: '😒', key: receivedMsg.key } });
+            reply("*❌ Invalid option!*");
+        }
       }
+    });
 
-      /* ===== OPTION 2 : DOCUMENT ===== */
-      if (text === "2") {
-        const buffer = await axios.get(songUrl, {
-          responseType: "arraybuffer",
-        });
-
-        await react("⬆️", msg.key);
-
-        await conn.sendMessage(from, {
-          document: buffer.data,
-          mimetype: "audio/mpeg",
-          fileName: `${video.title}.mp3`,
-        }, { quoted: msg });
-
-        return react("✔️", msg.key);
-      }
-
-      /* ===== OPTION 3 : VOICE NOTE (FIXED) ===== */
-      if (text === "3") {
-        const mp3Path = path.join(__dirname, `${Date.now()}.mp3`);
-        const opusPath = path.join(__dirname, `${Date.now()}.opus`);
-
-        // Download mp3
-        const stream = await axios.get(songUrl, { responseType: "stream" });
-        const writer = fs.createWriteStream(mp3Path);
-        stream.data.pipe(writer);
-        await new Promise(r => writer.on("finish", r));
-
-        // Convert to opus
-        await new Promise((resolve, reject) => {
-          ffmpeg(mp3Path)
-            .audioCodec("libopus")
-            .format("opus")
-            .save(opusPath)
-            .on("end", resolve)
-            .on("error", reject);
-        });
-
-        await react("⬆️", msg.key);
-
-        await conn.sendMessage(from, {
-          audio: fs.readFileSync(opusPath),
-          mimetype: "audio/ogg; codecs=opus",
-          ptt: true,
-        }, { quoted: msg });
-
-        fs.unlinkSync(mp3Path);
-        fs.unlinkSync(opusPath);
-
-        return react("✔️", msg.key);
-      }
-    };
-
-    conn.ev.on("messages.upsert", handler);
-  } catch (e) {
-    console.error(e);
-    reply("*Error*");
+  } catch (error) {
+    console.error("*Song2 Plugin Error*:", error);
+    reply("*Error downloading or sending audio.*");
   }
 });
