@@ -59,14 +59,6 @@ cmd({
         const data = search.videos[0];
         const ytUrl = data.url;
 
-        // 4️⃣ Define API links for download
-        const formats = {
-            "240p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=240&apikey=YOU_API_KEY`,
-            "360p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=360&apikey=YOU_API_KEY`,
-            "480p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=480&apikey=YOU_API_KEY`,
-            "720p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=720&apikey=YOU_API_KEY`
-        };
-
         // 5️⃣ Send selection menu (image + caption)
         const caption = `
 *📽️ RANUMITHA-X-MD VIDEO DOWNLOADER 🎥*
@@ -91,6 +83,11 @@ cmd({
    2.3 480p Qulity 📂
    2.4 720p Qulity 📂
 
+3. *WhatsApp Compatible Video 🎬*
+   3.1 WA Compatible 360p
+   3.2 WA Compatible 480p
+   3.3 WA Compatible 720p
+
 > © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
 
         const sentMsg = await conn.sendMessage(from, {
@@ -114,7 +111,7 @@ cmd({
                 receivedMsg.message.extendedTextMessage?.contextInfo?.stanzaId === messageID;
 
             if (isReplyToBot) {
-                let selectedFormat, isDocument = false;
+                let selectedFormat, isDocument = false, isWhatsAppCompatible = false;
 
                 switch (receivedText.trim().toUpperCase()) {
                     case "1.1": selectedFormat = "240p"; break;
@@ -125,6 +122,9 @@ cmd({
                     case "2.2": selectedFormat = "360p"; isDocument = true; break;
                     case "2.3": selectedFormat = "480p"; isDocument = true; break;
                     case "2.4": selectedFormat = "720p"; isDocument = true; break;
+                    case "3.1": selectedFormat = "360p"; isWhatsAppCompatible = true; break;
+                    case "3.2": selectedFormat = "480p"; isWhatsAppCompatible = true; break;
+                    case "3.3": selectedFormat = "720p"; isWhatsAppCompatible = true; break;
                     default:
                         return reply("*❌ Invalid option!*");
                 }
@@ -132,8 +132,74 @@ cmd({
                 // React ⬇️ when download starts
                 await conn.sendMessage(senderID, { react: { text: '⬇️', key: receivedMsg.key } });
 
-                // OMINISAVE API - 360p වලට පමණක් (1.2 සහ 2.2)
-                if ((receivedText.trim().toUpperCase() === "1.2" || receivedText.trim().toUpperCase() === "2.2")) {
+                if (isWhatsAppCompatible) {
+                    // WhatsApp Compatible API භාවිතා කරන්න
+                    try {
+                        // WhatsApp Compatible API URL (කුඩා file size සහ compatible codec සමග)
+                        const whatsappUrl = `https://api.vevioz.com/api/button/mp4/${ytUrl.split('v=')[1]}`;
+                        
+                        const { data: whatsappRes } = await axios.get(whatsappUrl);
+                        
+                        if (!whatsappRes || !whatsappRes[selectedFormat.replace('p', '')]) {
+                            throw new Error("WhatsApp API failed");
+                        }
+                        
+                        const downloadUrl = whatsappRes[selectedFormat.replace('p', '')];
+                        
+                        // React ⬆️ before uploading
+                        await conn.sendMessage(senderID, { react: { text: '⬆️', key: receivedMsg.key } });
+                        
+                        // WhatsApp සඳහා optimized metadata සමග send කරන්න
+                        await conn.sendMessage(senderID, {
+                            video: { 
+                                url: downloadUrl 
+                            },
+                            mimetype: "video/mp4",
+                            caption: `*${data.title}*\n📊 Quality: ${selectedFormat}\n✅ WhatsApp Compatible`,
+                            // WhatsApp වීඩියෝ සඳහා required parameters
+                            ptt: false,
+                            gifPlayback: false,
+                            // සුළු file size සහිතව
+                            fileLength: 104857600, // 100MB max
+                            seconds: data.duration.seconds || 300
+                        }, { quoted: receivedMsg });
+                        
+                        // React ✅ after upload complete
+                        await conn.sendMessage(senderID, { react: { text: '✔️', key: receivedMsg.key } });
+                        
+                    } catch (whatsappError) {
+                        console.error("WhatsApp API Error:", whatsappError);
+                        // Backup API භාවිතා කරන්න
+                        await conn.sendMessage(senderID, { react: { text: '🔄', key: receivedMsg.key } });
+                        
+                        // Fallback to regular API with WhatsApp compatible settings
+                        const backupUrl = `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=${selectedFormat.replace('p', '')}&apikey=YOU_API_KEY`;
+                        
+                        const { data: backupRes } = await axios.get(backupUrl);
+                        
+                        if (!backupRes?.status || !backupRes.result?.download) {
+                            await conn.sendMessage(senderID, { react: { text: '❌', key: receivedMsg.key } });
+                            return reply(`❌ Unable to download WhatsApp compatible ${selectedFormat} version.`);
+                        }
+                        
+                        const result = backupRes.result;
+                        
+                        // React ⬆️ before uploading
+                        await conn.sendMessage(senderID, { react: { text: '⬆️', key: receivedMsg.key } });
+                        
+                        await conn.sendMessage(senderID, {
+                            video: { url: result.download },
+                            mimetype: "video/mp4",
+                            caption: `*${data.title}*\n📊 Quality: ${selectedFormat}\n⏱️ Duration: ${data.timestamp}`,
+                            ptt: false,
+                            gifPlayback: false
+                        }, { quoted: receivedMsg });
+                        
+                        // React ✅ after upload complete
+                        await conn.sendMessage(senderID, { react: { text: '✔️', key: receivedMsg.key } });
+                    }
+                    
+                } else if (receivedText.trim().toUpperCase() === "1.2" || receivedText.trim().toUpperCase() === "2.2") {
                     // Ominisave API භාවිතා කරන්න
                     const ominisaveUrl = `https://ominisave.vercel.app/api/ytmp4?url=${encodeURIComponent(ytUrl)}`;
                     
@@ -161,7 +227,9 @@ cmd({
                             await conn.sendMessage(senderID, {
                                 video: { url: downloadUrl },
                                 mimetype: "video/mp4",
+                                caption: `*${data.title}*\n📊 Quality: ${selectedFormat}\n⏱️ Duration: ${data.timestamp}`,
                                 ptt: false,
+                                gifPlayback: false
                             }, { quoted: receivedMsg });
                         }
                         
@@ -176,6 +244,13 @@ cmd({
                 } else {
                     // අනෙක් quality වලට පැරණි API එකම භාවිතා කරන්න
                     try {
+                        const formats = {
+                            "240p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=240&apikey=YOU_API_KEY`,
+                            "360p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=360&apikey=YOU_API_KEY`,
+                            "480p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=480&apikey=YOU_API_KEY`,
+                            "720p": `https://sadiya-tech-apis.vercel.app/download/ytdl?url=${encodeURIComponent(ytUrl)}&format=720&apikey=YOU_API_KEY`
+                        };
+
                         const { data: apiRes } = await axios.get(formats[selectedFormat]);
 
                         if (!apiRes?.status || !apiRes.result?.download) {
@@ -192,13 +267,15 @@ cmd({
                             await conn.sendMessage(senderID, {
                                 document: { url: result.download },
                                 mimetype: "video/mp4",
-                                fileName: `${data.title}.mp4`
+                                fileName: `${data.title} - ${selectedFormat}.mp4`
                             }, { quoted: receivedMsg });
                         } else {
                             await conn.sendMessage(senderID, {
                                 video: { url: result.download },
                                 mimetype: "video/mp4",
+                                caption: `*${data.title}*\n📊 Quality: ${selectedFormat}\n⏱️ Duration: ${data.timestamp}`,
                                 ptt: false,
+                                gifPlayback: false
                             }, { quoted: receivedMsg });
                         }
 
