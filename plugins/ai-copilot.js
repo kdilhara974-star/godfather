@@ -50,7 +50,7 @@ async (conn, mek, m, { from, q, react }) => {
           text: `🧠 *Please provide a message for the AI.*
 
 📌 Example:
-• \`.copilot Hello\`
+• .copilot \`Hello\`
 • Reply to a message and type \`.copilot\``
         },
         { quoted: m }
