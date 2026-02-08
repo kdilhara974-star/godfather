@@ -36,7 +36,7 @@ cmd({
             return reply("🖼️ Please provide a search query\nExample: .img cute cats");
         }
 
-        await reply(`🔍 Searching images for *"${query}"*...`), { quoted: fakevCard };
+        await reply(`🔍 Searching images for *"${query}"*...`);
 
         const api = `https://malvin-api.vercel.app/search/gimage?q=${encodeURIComponent(query)}`;
         const { data } = await axios.get(api);
@@ -65,7 +65,7 @@ cmd({
                         caption: `📷 Result for: *${query}*\n> © Powerd by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`,
                         contextInfo: { mentionedJid: [m.sender] }
                     },
-                    { quoted: mek }
+                    { quoted: fakevCard }
                 );
             } catch (err) {
                 console.warn(`⚠️ Failed to send image: ${imageUrl}`);
@@ -95,7 +95,7 @@ cmd({
             return reply("🖼️ Please provide a search term!\nExample: *.image cute cats*");
         }
 
-        await reply(`🔍 Searching Images for *"${query}"*...`), { quoted: fakevCard };
+        await reply(`🔍 Searching Images for *"${query}"*...`);
 
         const apiUrl = `https://www.movanest.xyz/v2/googleimage?query=${encodeURIComponent(query)}`;
         const response = await axios.get(apiUrl);
@@ -129,7 +129,7 @@ cmd({
                             mentionedJid: [m.sender]
                         }
                     },
-                    { quoted: mek }
+                    { quoted: fakevCard }
                 );
             } catch (err) {
                 console.log("⚠️ Failed to send image:", err.message);
