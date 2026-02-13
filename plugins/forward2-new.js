@@ -12,8 +12,8 @@ const SAFETY = {
 const forwardCache = new NodeCache({ stdTTL: 300 });
 
 cmd({
-  pattern: "forward",
-  alias: ["fwd"],
+  pattern: "forward3",
+  alias: ["fwd3"],
   desc: "Forward media/messages to single or multiple JIDs with caption support (Spam Protected)",
   category: "owner",
   filename: __filename
