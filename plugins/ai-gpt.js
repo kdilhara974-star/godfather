@@ -74,8 +74,7 @@ async (conn, mek, m, { from, args }) => {
         }
 
         await conn.sendMessage(from, {
-            text: `
-🤖 *GPT-5 AI Response*  
+            text: `🤖 *GPT-5 AI Response*  
 ━━━━━━━━━━━━━━━
 ${data.result}
 
