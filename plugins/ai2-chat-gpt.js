@@ -4,7 +4,7 @@ const axios = require('axios');
 
 cmd({
     pattern: "gpt",
-    alias: [ "chatgpt", "ai2" "openai" ],
+    alias: [ "chatgpt", "ai2", "openai" ],
     desc: "Chat with Microsoft Copilot - GPT-5",
     category: "ai",
     react: "🤖",
