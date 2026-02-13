@@ -9,57 +9,64 @@ cmd({
     react: "🤖",
     filename: __filename
 },
-async (conn, mek, m, { from, q, react }) => {
+async (conn, mek, m, { from, args }) => {
     try {
 
-        let userText = q;
+        // ✅ Get text from args first
+        let userText = args.join(" ");
 
-        // ✅ If no text, check replied message safely
-        if (!userText) {
-            if (mek.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
+        // ✅ If no args, check replied message
+        if (!userText && mek.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
 
-                const quotedMsg =
-                    mek.message.extendedTextMessage.contextInfo.quotedMessage;
+            const quoted =
+                mek.message.extendedTextMessage.contextInfo.quotedMessage;
 
-                userText =
-                    quotedMsg.conversation ||
-                    quotedMsg.extendedTextMessage?.text ||
-                    quotedMsg.imageMessage?.caption ||
-                    quotedMsg.videoMessage?.caption;
-            }
+            userText =
+                quoted.conversation ||
+                quoted.extendedTextMessage?.text ||
+                quoted.imageMessage?.caption ||
+                quoted.videoMessage?.caption ||
+                "";
         }
 
-        // ❌ Still no text
+        // ❌ If still empty
         if (!userText) {
             return conn.sendMessage(from, {
-                text: `🧠 *Please provide a message for the AI.*
-
-📌 Example:
-• .gpt Hello
-• Reply to a message and type .gpt`
+                text: "🧠 Please provide a message.\n\nExample:\n.gpt Hello\nOR\nReply to a message and type .gpt"
             }, { quoted: mek });
         }
 
-        await react("⏳");
+        // ⏳ loading react
+        await conn.sendMessage(from, {
+            react: { text: "⏳", key: mek.key }
+        });
 
         const apiUrl = `https://malvin-api.vercel.app/ai/gpt-5?text=${encodeURIComponent(userText)}`;
 
         const { data } = await axios.get(apiUrl);
 
         if (!data?.result) {
-            await react("❌");
-            return conn.sendMessage(from, { text: "AI failed to respond." }, { quoted: mek });
+            throw new Error("No AI response");
         }
 
         await conn.sendMessage(from, {
             text: `🤖 *GPT-5 AI Response*\n\n${data.result}`
         }, { quoted: mek });
 
-        await react("✅");
+        // ✅ success react
+        await conn.sendMessage(from, {
+            react: { text: "✅", key: mek.key }
+        });
 
     } catch (err) {
         console.log(err);
-        await react("❌");
-        conn.sendMessage(from, { text: "Error communicating with AI." }, { quoted: mek });
+
+        await conn.sendMessage(from, {
+            react: { text: "❌", key: mek.key }
+        });
+
+        conn.sendMessage(from, {
+            text: "Error communicating with AI."
+        }, { quoted: mek });
     }
 });
