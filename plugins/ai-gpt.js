@@ -46,8 +46,8 @@ async (conn, mek, m, { from, q, reply, react }) => {
         }
 
         const responseMsg = `
-🤖 *AI Response*  
-━━━━━━━━━━━━━━━  
+🤖 *GPT-5 AI Response*  
+━━━━━━━━━━━━━━━
 ${data.result}
 
 > © Powerd by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`.trim();
