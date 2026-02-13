@@ -1,6 +1,26 @@
 const { cmd } = require('../command');
 const axios = require('axios');
 
+// Fake ChatGPT vCard
+const fakevCard = {
+    key: {
+        fromMe: false,
+        participant: "0@s.whatsapp.net",
+        remoteJid: "status@broadcast"
+    },
+    message: {
+        contactMessage: {
+            displayName: "© Mr Hiruka (GPT-5) ✅",
+            vcard: `BEGIN:VCARD
+VERSION:3.0
+FN:Meta
+ORG:META AI;
+TEL;type=CELL;type=VOICE;waid=18002428478:+18002428478
+END:VCARD`
+        }
+    }
+};
+
 cmd({
     pattern: "gpt",
     alias: ["chatgpt","openai","ai2"],
@@ -50,8 +70,13 @@ async (conn, mek, m, { from, args }) => {
         }
 
         await conn.sendMessage(from, {
-            text: `🤖 *GPT-5 AI Response*\n\n${data.result}`
-        }, { quoted: mek });
+            text: `
+🤖 *GPT-5 AI Response*  
+━━━━━━━━━━━━━━━
+${data.result}
+
+> © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`
+        }, { quoted: fakevCard });
 
         // ✅ success react
         await conn.sendMessage(from, {
