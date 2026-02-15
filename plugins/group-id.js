@@ -24,7 +24,7 @@ END:VCARD`
 cmd({
   pattern: "gid",
   alias: ["groupid", "grouplinkinfo"],
-  react: "🖼️",
+  react: "🪀",
   desc: "Get Group info from invite link with profile picture",
   category: "whatsapp",
   filename: __filename
@@ -33,7 +33,7 @@ cmd({
   try {
 
     if (!q) {
-      return reply("*Please provide a WhatsApp Group link.*\n\nExample:\n.gid https://chat.whatsapp.com/xxxxxxxx");
+      return reply("*Please provide a WhatsApp Channel link.*\n\n*Example:* .gid https://chat.whatsapp.com/xxxx");
     }
 
     // Extract invite code
@@ -58,12 +58,12 @@ cmd({
     }
 
     const infoText = `*— 乂 Group Link Info —*\n\n` +
-      `🆔 *Group ID:* ${metadata.id}\n` +
-      `📛 *Name:* ${metadata.subject}\n` +
-      `📝 *Description:* ${metadata.desc || "No description"}\n` +
-      `👑 *Owner:* ${metadata.owner || "Unknown"}\n` +
-      `👥 *Members:* ${metadata.size || "Unknown"}\n` +
-      `📅 *Created:* ${metadata.creation ? new Date(metadata.creation * 1000).toLocaleString() : "Unknown"}\n\n` +
+      `🔥 \`Group Name:\` ${metadata.subject}\n` +
+      `🆔 \`Group ID:\` ${metadata.id}\n` +
+      `👥 \`Participant Count:\` ${metadata.size || "Unknown"}\n` +
+      `👑 \`Group Creator:\` ${metadata.owner || "Unknown"}\n` +
+      `📃 \`Group Description:\` ${metadata.desc || "No description"}\n` +
+      `📅 \`Group Created:\` ${metadata.creation ? new Date(metadata.creation * 1000).toLocaleString() : "Unknown"}\n\n` +
       `> © Powerd by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
 
     // === Get Group Profile Picture using Buffer ===
