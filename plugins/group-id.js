@@ -23,7 +23,7 @@ END:VCARD`
 cmd({
   pattern: "gid",
   alias: ["groupid"],
-  react: "🔎",
+  react: "🪀",
   desc: "Get Group info from invite link",
   category: "whatsapp",
   filename: __filename
