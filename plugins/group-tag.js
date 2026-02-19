@@ -1,5 +1,6 @@
 const { cmd } = require('../command');
 
+// Fixed & Created By JawadTechX
 cmd({
   pattern: "hidetag",
   alias: ["tag", "h"],  
@@ -10,7 +11,7 @@ cmd({
   filename: __filename
 },
 async (conn, mek, m, {
-  from, q, isGroup, isOwner,
+  from, q, isGroup, isCreator, isAdmins,
   participants, reply
 }) => {
   try {
@@ -19,7 +20,7 @@ async (conn, mek, m, {
     };
 
     if (!isGroup) return reply("❌ This command can only be used in groups.");
-    if (!isOwner) return reply("🚫 *Owner Only Command!*");
+    if (!isAdmins && !isCreator) return reply("❌ Only group admins can use this command.");
 
     const mentionAll = { mentions: participants.map(u => u.id) };
 
