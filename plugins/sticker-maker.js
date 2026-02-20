@@ -32,6 +32,7 @@ cmd(
     {
         pattern: 'take',
         alias: ['rename', 'stake'],
+        react: "🔮",
         desc: 'Create a sticker with a custom pack name.',
         category: 'sticker',
         use: '<reply media or URL>',
@@ -68,6 +69,7 @@ cmd(
     {
         pattern: 'sticker',
         alias: ['s', 'stickergif'],
+        react: "🔮",
         desc: 'Create a sticker from an image, video, or URL.',
         category: 'sticker',
         use: '<reply media or URL>',
